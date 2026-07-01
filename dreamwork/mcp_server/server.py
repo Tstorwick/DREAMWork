@@ -12,7 +12,7 @@ from datetime import date
 
 from dreamwork.core.memory_store import seeded_store
 from dreamwork.core.repository import Repository
-from dreamwork.modules import dashboard
+from dreamwork.modules import dashboard, onboarding
 
 try:
     from mcp.server.fastmcp import FastMCP
@@ -64,6 +64,65 @@ def log_contact(entry_id: str, note: str = "", contact_date: str | None = None) 
         entry.next_step = note
     repo.update_pipeline_entry(entry)
     return {"ok": True, "entry_id": entry.id, "last_contact_date": entry.last_contact_date.isoformat()}
+
+
+@mcp.tool()
+def preview_import(text: str) -> dict:
+    """Preview importing a pasted list / CSV / Markdown table — shows the column mapping and what
+    would be created, without changing anything. Use this before `import_investors`."""
+    preview = onboarding.preview_tabular(text)
+    return {
+        "records_found": len(preview.records),
+        "column_mapping": preview.mapping.mapping if preview.mapping else {},
+        "unmapped_columns": preview.mapping.unmapped if preview.mapping else [],
+        "warnings": preview.warnings,
+        "needs_confirmation": preview.low_confidence,
+    }
+
+
+@mcp.tool()
+def import_investors(text: str, round_id: str = "r1") -> dict:
+    """Import investors from a pasted list / CSV / Markdown table into a round, deduping and
+    merging into existing records. Returns a summary of what was created and merged."""
+    result = onboarding.import_tabular(repo, round_id, text)
+    return {
+        "summary": result.summary(),
+        "firms_created": result.firms_created,
+        "partners_created": result.partners_created,
+        "entries_created": result.entries_created,
+        "merged": result.merges,
+        "warnings": result.warnings,
+    }
+
+
+@mcp.tool()
+def import_notion_database(link: str, round_id: str = "r1") -> dict:
+    """Import a Notion database into a round from a pasted app.notion.com link.
+
+    Requires NOTION_TOKEN in the environment and the database shared with the integration. If it
+    isn't shared, returns a `recovery` message telling the user exactly how to share it.
+    """
+    from dreamwork.modules.onboarding.sources.notion import (
+        NotionLinkError,
+        NotionPermissionError,
+        build_notion_client,
+    )
+
+    try:
+        client = build_notion_client()
+        result = onboarding.import_notion(repo, round_id, link, client)
+    except NotionPermissionError as exc:
+        return {"error": "not_shared", "recovery": exc.recovery, "share_url": exc.share_url}
+    except NotionLinkError as exc:
+        return {"error": "bad_link", "detail": str(exc)}
+    return {
+        "summary": result.summary(),
+        "firms_created": result.firms_created,
+        "partners_created": result.partners_created,
+        "entries_created": result.entries_created,
+        "merged": result.merges,
+        "warnings": result.warnings,
+    }
 
 
 def main() -> None:

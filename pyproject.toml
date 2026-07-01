@@ -12,6 +12,8 @@ dev = [
     "pytest>=8.0",
     "ruff>=0.6",
 ]
+# Only needed to import a live Notion database (onboarding). Everything else runs without it.
+notion = ["notion-client>=2.2"]
 # Chris's Postgres Repository will add its driver here, e.g.:
 # postgres = ["psycopg[binary]>=3.2", "sqlalchemy>=2.0"]
 

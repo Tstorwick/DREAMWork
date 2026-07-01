@@ -1,29 +1,34 @@
 // Shared helpers used across views.
 
-const STATUS_ORDER = [
-  "Contacted",
-  "Meeting Scheduled",
-  "In Diligence",
-  "Term Sheet",
-  "Closed - Won",
-  "Passed",
-  "No Response",
+// Canonical progression stages (dreamwork/core/domain.py :: Stage) with display labels + badge colors.
+const STAGE_ORDER = [
+  "sourced", "intro_requested", "contacted", "meeting",
+  "in_conversation", "diligence", "committed", "closed",
 ];
 
-const STATUS_BADGE = {
-  "Contacted": "badge-grey",
-  "Meeting Scheduled": "badge-blue",
-  "In Diligence": "badge-amber",
-  "Term Sheet": "badge-purple",
-  "Closed - Won": "badge-green",
-  "Passed": "badge-red",
-  "No Response": "badge-grey",
+const STAGE_LABELS = {
+  sourced: "Sourced", intro_requested: "Intro Requested", contacted: "Contacted",
+  meeting: "Meeting", in_conversation: "In Conversation", diligence: "Diligence",
+  committed: "Committed", closed: "Closed",
 };
 
-const DIRECTION_BADGE = {
-  inbound: "badge-blue",
-  outbound: "badge-amber",
+const STAGE_BADGE = {
+  sourced: "badge-grey", intro_requested: "badge-grey", contacted: "badge-grey",
+  meeting: "badge-blue", in_conversation: "badge-blue", diligence: "badge-amber",
+  committed: "badge-purple", closed: "badge-green",
 };
+
+// Orthogonal outcome axis (dreamwork/core/domain.py :: Outcome). Independent of stage.
+const OUTCOME_ORDER = ["active", "snoozed", "passed", "next_round"];
+const OUTCOME_LABELS = { active: "Active", snoozed: "Snoozed", passed: "Passed", next_round: "Next Round" };
+const OUTCOME_BADGE = { active: "badge-green", snoozed: "badge-grey", passed: "badge-red", next_round: "badge-blue" };
+
+const DIRECTION_BADGE = { inbound: "badge-blue", outbound: "badge-amber" };
+
+function stageRank(stage) {
+  const r = STAGE_ORDER.indexOf(stage);
+  return r === -1 ? 0 : r;
+}
 
 function fmtMoney(n) {
   if (n === null || n === undefined) return "—";
@@ -59,25 +64,34 @@ function getPeerById(id) {
   return DW_DATA.peers.find((p) => p.id === id);
 }
 
-function badgeForStatus(status) {
-  return STATUS_BADGE[status] || "badge-grey";
+function badgeForStage(stage) {
+  return STAGE_BADGE[stage] || "badge-grey";
+}
+
+function badgeForOutcome(outcome) {
+  return OUTCOME_BADGE[outcome] || "badge-grey";
 }
 
 function badgeForDirection(dir) {
   return DIRECTION_BADGE[dir] || "badge-grey";
 }
 
-function warmthDots(warmth) {
-  let html = '<span class="warmth-dots">';
-  for (let i = 1; i <= 5; i++) {
-    html += `<span class="warmth-dot ${i <= warmth ? "on" : ""}"></span>`;
+// The two-axis status display: a stage badge, plus an outcome badge whenever it's not simply "active".
+function statusBadges(inv) {
+  let html = `<span class="badge ${badgeForStage(inv.stage)}">${STAGE_LABELS[inv.stage] || inv.stage}</span>`;
+  if (inv.outcome && inv.outcome !== "active") {
+    html += ` <span class="badge ${badgeForOutcome(inv.outcome)}">${OUTCOME_LABELS[inv.outcome] || inv.outcome}</span>`;
   }
-  html += "</span>";
   return html;
 }
 
+function leadBadge(isLead) {
+  return isLead ? '<span class="badge badge-purple">Lead</span>' : '<span class="muted">—</span>';
+}
+
 function checkRange(inv) {
-  return `${fmtMoney(inv.checkMin)}–${fmtMoney(inv.checkMax)}`;
+  const [min, max] = inv.ticketRange || [null, null];
+  return `${fmtMoney(min)}–${fmtMoney(max)}`;
 }
 
 // ---------- Metrics ----------
@@ -85,57 +99,51 @@ function checkRange(inv) {
 function computeMetrics() {
   const investors = DW_DATA.investors;
   const total = investors.length;
-  const closedWon = investors.filter((i) => i.status === "Closed - Won");
-  const termSheet = investors.filter((i) => i.status === "Term Sheet");
-  const passed = investors.filter((i) => i.status === "Passed");
-  const noResponse = investors.filter((i) => i.status === "No Response");
-  const meetingsPlus = investors.filter((i) =>
-    ["Meeting Scheduled", "In Diligence", "Term Sheet", "Closed - Won"].includes(i.status)
-  );
-  const responded = investors.filter((i) => i.status !== "No Response");
 
-  const totalRaised = closedWon.reduce((sum, i) => sum + (i.amount || 0), 0);
-  const pendingCommitted = termSheet.reduce((sum, i) => sum + (i.amount || 0), 0);
+  const atLeast = (stage) => investors.filter((i) => stageRank(i.stage) >= stageRank(stage));
+  const closed = investors.filter((i) => i.stage === "closed");
+  const committed = investors.filter((i) => i.stage === "committed" && i.outcome === "active");
+  const passed = investors.filter((i) => i.outcome === "passed");
+  const nextRound = investors.filter((i) => i.outcome === "next_round");
+  const snoozed = investors.filter((i) => i.outcome === "snoozed");
 
-  const activeStatuses = ["Contacted", "Meeting Scheduled", "In Diligence", "Term Sheet"];
-  const activeInvestors = investors.filter((i) => activeStatuses.includes(i.status));
-  const pipelineValue = activeInvestors.reduce(
-    (sum, i) => sum + (i.checkMin + i.checkMax) / 2,
-    0
-  );
+  // "Active conversations" = live (outcome active) and still in flight (not yet closed).
+  const active = investors.filter((i) => i.outcome === "active" && i.stage !== "closed");
 
+  const sum = (arr) => arr.reduce((s, i) => s + (i.ticketEstimateUsd || 0), 0);
+  const totalRaised = sum(closed);
+  const pendingCommitted = sum(committed);
+  const pipelineValue = sum(active);
+
+  const responded = investors.filter((i) => stageRank(i.stage) > stageRank("contacted"));
   const responseRate = total ? Math.round((responded.length / total) * 100) : 0;
-  const meetingRate = total ? Math.round((meetingsPlus.length / total) * 100) : 0;
-  const closeRate = total ? Math.round((closedWon.length / total) * 100) : 0;
+  const meetingRate = total ? Math.round((atLeast("meeting").length / total) * 100) : 0;
+  const closeRate = total ? Math.round((closed.length / total) * 100) : 0;
 
   const inbound = investors.filter((i) => i.direction === "inbound");
   const outbound = investors.filter((i) => i.direction === "outbound");
-  const inboundCloseRate = inbound.length
-    ? Math.round((inbound.filter((i) => i.status === "Closed - Won").length / inbound.length) * 100)
-    : 0;
-  const outboundCloseRate = outbound.length
-    ? Math.round((outbound.filter((i) => i.status === "Closed - Won").length / outbound.length) * 100)
-    : 0;
+  const closeRateFor = (arr) =>
+    arr.length ? Math.round((arr.filter((i) => i.stage === "closed").length / arr.length) * 100) : 0;
 
-  const avgCheck = closedWon.length
-    ? Math.round(closedWon.reduce((s, i) => s + (i.amount || 0), 0) / closedWon.length)
-    : 0;
+  const avgCheck = closed.length ? Math.round(totalRaised / closed.length) : 0;
 
-  // Funnel counts (each stage = investors that reached AT LEAST that stage)
+  // Funnel: how many investors reached AT LEAST each stage.
   const funnel = [
-    { label: "Contacted", count: total },
-    { label: "Meeting", count: meetingsPlus.length },
-    { label: "Diligence", count: investors.filter((i) => ["In Diligence", "Term Sheet", "Closed - Won"].includes(i.status)).length },
-    { label: "Term Sheet", count: investors.filter((i) => ["Term Sheet", "Closed - Won"].includes(i.status)).length },
-    { label: "Closed", count: closedWon.length },
+    { label: "Contacted", count: atLeast("contacted").length },
+    { label: "Meeting", count: atLeast("meeting").length },
+    { label: "Diligence", count: atLeast("diligence").length },
+    { label: "Committed", count: atLeast("committed").length },
+    { label: "Closed", count: closed.length },
   ];
 
   return {
     total,
-    closedWon: closedWon.length,
-    termSheet: termSheet.length,
+    closedWon: closed.length,
+    committed: committed.length,
     passed: passed.length,
-    noResponse: noResponse.length,
+    nextRound: nextRound.length,
+    snoozed: snoozed.length,
+    activeCount: active.length,
     totalRaised,
     pendingCommitted,
     pipelineValue,
@@ -144,8 +152,8 @@ function computeMetrics() {
     closeRate,
     inboundCount: inbound.length,
     outboundCount: outbound.length,
-    inboundCloseRate,
-    outboundCloseRate,
+    inboundCloseRate: closeRateFor(inbound),
+    outboundCloseRate: closeRateFor(outbound),
     avgCheck,
     funnel,
   };

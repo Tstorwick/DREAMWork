@@ -95,9 +95,9 @@ function openAddInvestorModal() {
         </select>
       </div>
       <div class="form-group">
-        <label class="form-label">Status</label>
-        <select class="form-select" id="f-status">
-          ${STATUS_ORDER.map((s) => `<option>${s}</option>`).join("")}
+        <label class="form-label">Stage</label>
+        <select class="form-select" id="f-stage">
+          ${STAGE_ORDER.map((s) => `<option value="${s}">${STAGE_LABELS[s]}</option>`).join("")}
         </select>
       </div>
     </div>
@@ -132,20 +132,32 @@ function openAddInvestorModal() {
     }
     const initials = name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
     const colors = ["#6ee7b7", "#93c5fd", "#fca5a5", "#fcd34d", "#a5b4fc", "#67e8f9", "#f9a8d4", "#c4b5fd", "#fdba74"];
+    const checkMin = Number(document.getElementById("f-checkmin").value) || 0;
+    const checkMax = Number(document.getElementById("f-checkmax").value) || 0;
+    // Shaped like the PipelineEntry ⋈ Firm ⋈ Partner join the views read (see data.js).
     const newInvestor = {
       id: "i" + Date.now(),
+      // canonical entry state
+      stage: document.getElementById("f-stage").value,
+      outcome: "active",
+      isLead: false,
+      ticketEstimateUsd: checkMin && checkMax ? Math.round((checkMin + checkMax) / 2) : (checkMax || checkMin || null),
+      firstContact: "2026-07-01",
+      lastActivity: "2026-07-01",
+      nextStep: null,
+      snoozeUntil: null,
+      // joined display fields
       name, firm,
       type: document.getElementById("f-type").value,
-      initials, color: colors[Math.floor(Math.random() * colors.length)],
-      location: "—",
-      stageFocus: [DW_DATA.founder.round],
+      role: "—",
+      ticketRange: [checkMin, checkMax],
       sectors: ["Unspecified"],
-      checkMin: Number(document.getElementById("f-checkmin").value) || 0,
-      checkMax: Number(document.getElementById("f-checkmax").value) || 0,
+      location: "—",
+      stageFocus: [DW_DATA.round.label],
+      leads: false,
+      initials, color: colors[Math.floor(Math.random() * colors.length)],
+      // prototype-only extras
       direction: document.getElementById("f-direction").value,
-      status: document.getElementById("f-status").value,
-      warmth: 2,
-      lastActivity: "2026-07-01",
       introducedBy: null,
       peerIds: [],
       notes: document.getElementById("f-notes").value.trim() || "No notes yet.",

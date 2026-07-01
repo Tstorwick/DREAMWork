@@ -21,10 +21,10 @@ function renderOverview() {
     </div>
 
     <div class="stat-grid">
-      ${statCard("Total Raised", fmtMoney(m.totalRaised), `${fmtMoney(m.pendingCommitted)} pending in term sheets`, "up")}
-      ${statCard("Active Conversations", DW_DATA.investors.filter(i => ["Contacted","Meeting Scheduled","In Diligence","Term Sheet"].includes(i.status)).length, `${fmtMoney(m.pipelineValue)} pipeline value`, "flat")}
+      ${statCard("Total Raised", fmtMoney(m.totalRaised), `${fmtMoney(m.pendingCommitted)} committed, pending close`, "up")}
+      ${statCard("Active Conversations", m.activeCount, `${fmtMoney(m.pipelineValue)} pipeline value`, "flat")}
       ${statCard("Close Rate", m.closeRate + "%", `${m.closedWon} of ${m.total} investors closed`, m.closeRate >= 15 ? "up" : "flat")}
-      ${statCard("Response Rate", m.responseRate + "%", `${m.noResponse} awaiting reply`, m.responseRate >= 70 ? "up" : "down")}
+      ${statCard("Response Rate", m.responseRate + "%", `${m.snoozed} snoozed · ${m.nextRound} next-round`, m.responseRate >= 70 ? "up" : "down")}
       ${statCard("Network Size", m.total, `${m.inboundCount} inbound · ${m.outboundCount} outbound`, "flat")}
     </div>
 
@@ -156,7 +156,7 @@ function renderTimeline(items) {
   if (!items.length) return emptyState("No activity yet");
   const dotColor = {
     inbound: "#60a5fa", outbound: "#fbbf24", meeting: "#c084fc",
-    term_sheet: "#4ade80", closed_won: "#4ade80", passed: "#f87171",
+    committed: "#4ade80", closed_won: "#4ade80", passed: "#f87171",
   };
   return `<div class="timeline">${items.map((a) => {
     const inv = getInvestorById(a.investorId);
@@ -181,7 +181,7 @@ function sharedCardCompact(entry) {
         <div class="row-name">${inv.name}</div>
         <div class="row-sub">${inv.firm} · shared with ${entry.peers.map((p) => p.name.split(" ")[0]).join(", ")}</div>
       </div>
-      <span class="badge ${badgeForStatus(inv.status)}">${inv.status}</span>
+      ${statusBadges(inv)}
     </div>
   `;
 }
@@ -192,7 +192,7 @@ function emptyState(msg) {
 
 // ================= INVESTORS =================
 
-const investorsState = { search: "", direction: "all", status: "all", sortKey: "lastActivity", sortDir: "desc" };
+const investorsState = { search: "", direction: "all", stage: "all", sortKey: "lastActivity", sortDir: "desc" };
 
 function renderInvestors() {
   document.getElementById("content").innerHTML = `
@@ -209,8 +209,8 @@ function renderInvestors() {
       <button class="chip ${investorsState.direction === "outbound" ? "active" : ""}" data-dir="outbound">Outbound</button>
       <div class="filter-spacer"></div>
       <select class="select-input" id="status-filter">
-        <option value="all">All statuses</option>
-        ${STATUS_ORDER.map((s) => `<option value="${s}" ${investorsState.status === s ? "selected" : ""}>${s}</option>`).join("")}
+        <option value="all">All stages</option>
+        ${STAGE_ORDER.map((s) => `<option value="${s}" ${investorsState.stage === s ? "selected" : ""}>${STAGE_LABELS[s]}</option>`).join("")}
       </select>
     </div>
 
@@ -221,9 +221,9 @@ function renderInvestors() {
             <tr>
               <th data-sort="name">Investor</th>
               <th data-sort="direction">Direction</th>
-              <th data-sort="status">Status</th>
-              <th data-sort="checkMax">Check Size</th>
-              <th data-sort="warmth">Warmth</th>
+              <th data-sort="stage">Stage</th>
+              <th data-sort="ticketEstimateUsd">Est. Ticket</th>
+              <th data-sort="isLead">Lead</th>
               <th data-sort="lastActivity">Last Activity</th>
             </tr>
           </thead>
@@ -241,7 +241,7 @@ function renderInvestors() {
   });
 
   document.getElementById("status-filter").addEventListener("change", (e) => {
-    investorsState.status = e.target.value;
+    investorsState.stage = e.target.value;
     renderInvestorsTable();
   });
 
@@ -271,7 +271,7 @@ function getFilteredInvestors() {
     );
   }
   if (investorsState.direction !== "all") rows = rows.filter((i) => i.direction === investorsState.direction);
-  if (investorsState.status !== "all") rows = rows.filter((i) => i.status === investorsState.status);
+  if (investorsState.stage !== "all") rows = rows.filter((i) => i.stage === investorsState.stage);
 
   const { sortKey, sortDir } = investorsState;
   rows.sort((a, b) => {
@@ -301,9 +301,9 @@ function renderInvestorsTable() {
           </div>
         </td>
         <td><span class="badge ${badgeForDirection(inv.direction)}">${inv.direction}</span></td>
-        <td><span class="badge ${badgeForStatus(inv.status)}">${inv.status}</span></td>
-        <td>${checkRange(inv)}</td>
-        <td>${warmthDots(inv.warmth)}</td>
+        <td>${statusBadges(inv)}</td>
+        <td>${inv.ticketEstimateUsd ? fmtMoney(inv.ticketEstimateUsd) : checkRange(inv)}</td>
+        <td>${leadBadge(inv.isLead)}</td>
         <td class="muted">${daysAgo(inv.lastActivity)}</td>
       </tr>
     `).join("")
@@ -367,7 +367,7 @@ function connectionRow(inv) {
         <div class="row-sub">${inv.firm}${inv.introducedBy ? " · via " + inv.introducedBy : ""}</div>
       </div>
       <div class="row-meta">
-        <span class="badge ${badgeForStatus(inv.status)}">${inv.status}</span>
+        ${statusBadges(inv)}
         <div style="margin-top:5px">${daysAgo(inv.lastActivity)}</div>
       </div>
     </div>
@@ -385,19 +385,21 @@ function renderPipeline() {
       </div>
     </div>
     <div class="kanban" id="kanban-board">
-      ${DW_DATA.pipelineStages.map(pipelineColumn).join("")}
+      ${STAGE_ORDER.map(pipelineColumn).join("")}
     </div>
+    <p class="view-desc" style="margin-top:14px">Showing active conversations. Passed, snoozed, and next-round investors are tracked on their entries but hidden from the board.</p>
   `;
 
   wireKanbanDragDrop();
 }
 
 function pipelineColumn(stage) {
-  const items = DW_DATA.investors.filter((i) => i.status === stage);
+  // The board is the active pipeline: only outcome === "active" entries appear.
+  const items = DW_DATA.investors.filter((i) => i.stage === stage && i.outcome === "active");
   return `
     <div class="kanban-col" data-stage="${stage}">
       <div class="kanban-col-header">
-        <span class="kanban-col-title">${stage}</span>
+        <span class="kanban-col-title">${STAGE_LABELS[stage]}</span>
         <span class="kanban-count">${items.length}</span>
       </div>
       <div class="kanban-drop-zone" data-stage="${stage}">
@@ -443,18 +445,18 @@ function wireKanbanDragDrop() {
       if (!draggedId) return;
       const inv = getInvestorById(draggedId);
       const newStage = col.dataset.stage;
-      if (inv && inv.status !== newStage) {
-        const oldStage = inv.status;
-        inv.status = newStage;
+      if (inv && inv.stage !== newStage) {
+        const oldStage = inv.stage;
+        inv.stage = newStage;
         inv.lastActivity = "2026-07-01";
         DW_DATA.activity.unshift({
           id: "a" + Date.now(),
           date: "2026-07-01",
-          type: newStage === "Closed - Won" ? "closed_won" : newStage === "Passed" ? "passed" : "outbound",
+          type: newStage === "closed" ? "closed_won" : "outbound",
           investorId: inv.id,
-          text: `${inv.name} moved from ${oldStage} to ${newStage}.`,
+          text: `${inv.name} moved from ${STAGE_LABELS[oldStage]} to ${STAGE_LABELS[newStage]}.`,
         });
-        showToast(`Moved ${inv.name} to "${newStage}"`);
+        showToast(`Moved ${inv.name} to "${STAGE_LABELS[newStage]}"`);
         renderPipeline();
       }
     });
@@ -511,7 +513,7 @@ function networkCard(entry) {
             <div class="cell-investor-firm">${checkRange(inv)} · ${inv.sectors.join(", ")}</div>
           </div>
         </div>
-        <span class="badge ${badgeForStatus(inv.status)}">${inv.status}</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${statusBadges(inv)}</div>
       </div>
       <div class="peer-pill-row">
         ${entry.peers.map((p) => `
@@ -564,7 +566,7 @@ function openInvestorDetail(id) {
     <div class="detail-section">
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <span class="badge ${badgeForDirection(inv.direction)}">${inv.direction}</span>
-        <span class="badge ${badgeForStatus(inv.status)}">${inv.status}</span>
+        ${statusBadges(inv)}
       </div>
     </div>
 
@@ -575,7 +577,9 @@ function openInvestorDetail(id) {
         <div class="kv-item"><div class="kv-label">Location</div><div class="kv-value">${inv.location}</div></div>
         <div class="kv-item"><div class="kv-label">Stage Focus</div><div class="kv-value">${inv.stageFocus.join(", ")}</div></div>
         <div class="kv-item"><div class="kv-label">Sectors</div><div class="kv-value">${inv.sectors.join(", ")}</div></div>
-        <div class="kv-item"><div class="kv-label">Warmth</div><div class="kv-value">${warmthDots(inv.warmth)}</div></div>
+        <div class="kv-item"><div class="kv-label">Lead</div><div class="kv-value">${leadBadge(inv.isLead)}</div></div>
+        <div class="kv-item"><div class="kv-label">Est. Ticket</div><div class="kv-value">${inv.ticketEstimateUsd ? fmtMoneyFull(inv.ticketEstimateUsd) : "—"}</div></div>
+        <div class="kv-item"><div class="kv-label">Next Step</div><div class="kv-value">${inv.nextStep ? escapeHtml(inv.nextStep) : "—"}</div></div>
         <div class="kv-item"><div class="kv-label">Last Activity</div><div class="kv-value">${daysAgo(inv.lastActivity)}</div></div>
       </div>
     </div>
@@ -604,27 +608,33 @@ function openInvestorDetail(id) {
       ${renderTimeline(relatedActivity)}
     </div>
 
-    <div class="modal-actions" style="justify-content:flex-start">
-      <select class="select-input" id="detail-status-select">
-        ${STATUS_ORDER.map((s) => `<option value="${s}" ${s === inv.status ? "selected" : ""}>${s}</option>`).join("")}
+    <div class="modal-actions" style="justify-content:flex-start;flex-wrap:wrap">
+      <select class="select-input" id="detail-stage-select">
+        ${STAGE_ORDER.map((s) => `<option value="${s}" ${s === inv.stage ? "selected" : ""}>${STAGE_LABELS[s]}</option>`).join("")}
       </select>
-      <button class="btn btn-primary btn-small" id="detail-status-save">Update Stage</button>
+      <select class="select-input" id="detail-outcome-select">
+        ${OUTCOME_ORDER.map((o) => `<option value="${o}" ${o === inv.outcome ? "selected" : ""}>${OUTCOME_LABELS[o]}</option>`).join("")}
+      </select>
+      <button class="btn btn-primary btn-small" id="detail-status-save">Update</button>
     </div>
   `;
 
   document.getElementById("slideover-backdrop").classList.add("open");
   document.getElementById("slideover-close").addEventListener("click", closeSlideover);
   document.getElementById("detail-status-save").addEventListener("click", () => {
-    const newStatus = document.getElementById("detail-status-select").value;
-    if (newStatus !== inv.status) {
-      inv.status = newStatus;
+    const newStage = document.getElementById("detail-stage-select").value;
+    const newOutcome = document.getElementById("detail-outcome-select").value;
+    if (newStage !== inv.stage || newOutcome !== inv.outcome) {
+      inv.stage = newStage;
+      inv.outcome = newOutcome;
       inv.lastActivity = "2026-07-01";
       DW_DATA.activity.unshift({
         id: "a" + Date.now(), date: "2026-07-01",
-        type: newStatus === "Closed - Won" ? "closed_won" : newStatus === "Passed" ? "passed" : "outbound",
-        investorId: inv.id, text: `${inv.name} stage updated to ${newStatus}.`,
+        type: newStage === "closed" ? "closed_won" : newOutcome === "passed" ? "passed" : "outbound",
+        investorId: inv.id,
+        text: `${inv.name} updated to ${STAGE_LABELS[newStage]} · ${OUTCOME_LABELS[newOutcome]}.`,
       });
-      showToast(`${inv.name} updated to "${newStatus}"`);
+      showToast(`${inv.name} updated`);
       closeSlideover();
       renderCurrentView();
     }

@@ -3,9 +3,10 @@
 A conversation with an investor has **two independent axes**. Keeping them separate is what
 lets us say "they passed this round but are a great next-round fit" without losing the record.
 
-> **PROPOSED — please ratify.** These values are a starting proposal drawn from the meeting.
-> The dashboard's reminders and the qualified-list logic key off them, so let's agree on the
-> set before building on it. Edit here first; `core/domain.py` mirrors this file.
+> **RATIFIED (2026-07-01).** These are the canonical stages and outcomes — `qualified_list`,
+> `onboarding`'s stage coercion, and the `dashboard` all key off them. Change them here first,
+> then propagate to `core/domain.py` (`Stage`/`Outcome`), `onboarding/coerce.to_stage`,
+> `qualified_list`, and the dashboard prototype in one pass.
 
 ## Axis 1 — `Stage` (how far the conversation has progressed)
 

@@ -43,8 +43,8 @@ data/dossiers/       # The Markdown dossier files, git-tracked.
 ## Quickstart
 
 ```bash
-# 1. Install (Python 3.11+)
-pip install -e ".[dev]"
+# 1. Install (Python 3.11+) into a project venv
+python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
 
 # 2. Run the MCP server against the in-memory store (no Postgres needed yet)
 python -m dreamwork.mcp_server

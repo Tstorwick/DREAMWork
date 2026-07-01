@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DreamWork — Fundraising &amp; Founder Network</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">DW</div>
+        <div class="brand-text">
+          <div class="brand-name">DreamWork</div>
+          <div class="brand-sub">Fundraising OS</div>
+        </div>
+      </div>
+
+      <nav class="nav" id="nav">
+        <button class="nav-item active" data-view="overview">
+          <span class="nav-icon">◎</span> Overview
+        </button>
+        <button class="nav-item" data-view="investors">
+          <span class="nav-icon">☰</span> Investors
+        </button>
+        <button class="nav-item" data-view="connections">
+          <span class="nav-icon">⇄</span> Connections
+        </button>
+        <button class="nav-item" data-view="pipeline">
+          <span class="nav-icon">▤</span> Pipeline
+        </button>
+        <button class="nav-item" data-view="network">
+          <span class="nav-icon">✦</span> Shared Network
+        </button>
+        <button class="nav-item" data-view="activity">
+          <span class="nav-icon">◷</span> Activity
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="raise-progress">
+          <div class="raise-progress-label">
+            <span id="raise-current">$0</span> <span class="muted">of</span> <span id="raise-target">$0</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="raise-fill"></div>
+          </div>
+          <div class="raise-progress-pct muted" id="raise-pct">0% to target</div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="main-col">
+      <nav class="mobile-nav" id="mobile-nav">
+        <button class="mobile-nav-item active" data-view="overview">Overview</button>
+        <button class="mobile-nav-item" data-view="investors">Investors</button>
+        <button class="mobile-nav-item" data-view="connections">Connections</button>
+        <button class="mobile-nav-item" data-view="pipeline">Pipeline</button>
+        <button class="mobile-nav-item" data-view="network">Shared Network</button>
+        <button class="mobile-nav-item" data-view="activity">Activity</button>
+      </nav>
+
+      <header class="topbar">
+        <div class="search-wrap">
+          <span class="search-icon">⌕</span>
+          <input id="global-search" type="text" placeholder="Search investors, firms, founders…" />
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-ghost" id="btn-log-activity">+ Log Activity</button>
+          <button class="btn btn-primary" id="btn-add-investor">+ Add Investor</button>
+          <div class="profile-chip">
+            <div class="avatar" id="founder-avatar">JR</div>
+            <div class="profile-text">
+              <div class="profile-name" id="founder-name">—</div>
+              <div class="profile-sub" id="founder-company">—</div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="content" id="content">
+        <!-- views are rendered here by app.js -->
+      </main>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal" id="modal-root"></div>
+  </div>
+
+  <div class="slideover-backdrop" id="slideover-backdrop">
+    <div class="slideover" id="slideover-root"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/views.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

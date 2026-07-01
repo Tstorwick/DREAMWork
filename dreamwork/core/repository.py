@@ -1,0 +1,49 @@
+"""The Repository contract — how DreamWork reads and writes data.
+
+This is a `Protocol`, not a database. It says *what* operations exist, not *how* they're
+stored. Two things implement it:
+
+  - `core.memory_store.InMemoryRepository` — works today, no setup, for developing and demos.
+  - `modules/qualified_list` (Chris) — the real local Postgres implementation.
+
+Write every module against this type. Because storage lives behind the contract, swapping the
+in-memory store for Postgres changes nothing else in the codebase.
+"""
+
+from __future__ import annotations
+
+from typing import Protocol
+
+from dreamwork.core.domain import (
+    Firm,
+    IntroRequest,
+    Partner,
+    PipelineEntry,
+    Round,
+)
+
+
+class Repository(Protocol):
+    # --- Firms & Partners -------------------------------------------------
+    def add_firm(self, firm: Firm) -> Firm: ...
+    def get_firm(self, firm_id: str) -> Firm | None: ...
+    def list_firms(self) -> list[Firm]: ...
+
+    def add_partner(self, partner: Partner) -> Partner: ...
+    def get_partner(self, partner_id: str) -> Partner | None: ...
+    def list_partners(self, firm_id: str | None = None) -> list[Partner]: ...
+
+    # --- Rounds -----------------------------------------------------------
+    def add_round(self, round_: Round) -> Round: ...
+    def get_round(self, round_id: str) -> Round | None: ...
+    def list_rounds(self) -> list[Round]: ...
+
+    # --- Pipeline ---------------------------------------------------------
+    def add_pipeline_entry(self, entry: PipelineEntry) -> PipelineEntry: ...
+    def update_pipeline_entry(self, entry: PipelineEntry) -> PipelineEntry: ...
+    def get_pipeline_entry(self, entry_id: str) -> PipelineEntry | None: ...
+    def list_pipeline(self, round_id: str) -> list[PipelineEntry]: ...
+
+    # --- Intro requests ---------------------------------------------------
+    def add_intro_request(self, req: IntroRequest) -> IntroRequest: ...
+    def list_intro_requests(self, round_id: str) -> list[IntroRequest]: ...

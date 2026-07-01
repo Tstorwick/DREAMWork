@@ -14,6 +14,9 @@ from dreamwork.core.domain import Firm
 
 # Only these firm-level attributes may ever cross into the shared store. Anything about *you*,
 # your company, or a specific conversation stays internal. This allowlist is the guardrail.
+# NEVER add a founder's private opinion here: `founder_rating` is a per-founder private field
+# and must stay local (see docs/onboarding-flow-proposal.md). test_never_share_founder_rating
+# locks this — if you're tempted to add it, that's the leak Chris warned about.
 SHAREABLE_FIRM_FIELDS = ("fund_size_usd", "aum_usd", "leads", "follows_on")
 
 

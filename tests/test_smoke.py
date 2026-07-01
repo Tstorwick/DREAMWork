@@ -45,6 +45,16 @@ def test_sanitize_only_shares_firm_level_facts():
     assert fields == {"fund_size_usd", "leads"}  # name/id/geos are never emitted as facts
 
 
+def test_never_share_founder_rating():
+    """founder_rating is a private opinion — it must never sanitize into a shareable fact (PR #3)."""
+    from dreamwork.modules.external.client import SHAREABLE_FIRM_FIELDS
+
+    assert "founder_rating" not in SHAREABLE_FIRM_FIELDS
+    firm = Firm(id="f1", name="Breakthrough Energy", fund_size_usd=200_000_000, founder_rating=4)
+    facts = sanitize(firm, owner="Chris", connection="Chris")
+    assert "founder_rating" not in {f.field for f in facts}
+
+
 def test_bookface_corroboration_raises_confidence():
     book = LocalMockBookFace()
     firm = Firm(id="f1", name="Breakthrough Energy", fund_size_usd=200_000_000)

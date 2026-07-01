@@ -41,6 +41,8 @@ Extantia companies and don't need their own record.
 | `ticket_size_usd_range` | (int?, int?)? | The firm's *typical* check size, (min, max). Distinct from `PipelineEntry.ticket_estimate_usd`, which is your estimate for *this* round. |
 | `portfolio_companies` | list[str]    | Freeform, firm-reported.                            |
 | `extantia_portfolio_overlap` | list[str] | Subset of `portfolio_companies` that are also Extantia portfolio companies — powers cross-portfolio investor visibility. Free strings for now; will reference real portco records once `external` lands. |
+| `still_investing`  | bool?           | False = fund closed / deploying paused. `qualified_list` skips these. |
+| `founder_rating`   | int?            | The founder's **private** 1–4 star opinion. **Never shared** — must stay out of `SHAREABLE_FIRM_FIELDS`. |
 | `dossier_path`     | str?            | → `data/dossiers/firm/<id>.md`                     |
 
 ### Partner

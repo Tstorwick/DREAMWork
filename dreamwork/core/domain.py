@@ -56,6 +56,10 @@ class Firm:
     # Subset of portfolio_companies that are also Extantia portcos — powers "who already knows
     # this fund" cross-portfolio visibility.
     extantia_portfolio_overlap: list[str] = field(default_factory=list)
+    still_investing: bool | None = None  # False = deploying paused/fund closed; qualification skips these
+    # The founder's PRIVATE 1-4 star opinion of this fund. NOT a fact — must NEVER be added to
+    # modules/external/client.py::SHAREABLE_FIRM_FIELDS. Stays local to this founder. (PR #3)
+    founder_rating: int | None = None
     dossier_path: str | None = None  # -> data/dossiers/firm/<id>.md
 
 

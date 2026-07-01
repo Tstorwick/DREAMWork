@@ -37,9 +37,27 @@ __all__ = [
     "import_records",
     "import_tabular",
     "import_captable",
+    "import_notion",
     "preview_tabular",
+    "preview_notion",
     "normalize_name",
 ]
+
+
+def preview_notion(link: str, client) -> ImportPreview:
+    """Show what a shared Notion database would import — without touching core.
+
+    `client` implements `sources.notion.NotionClient`; use `build_notion_client()` for the real
+    SDK. Raises `NotionPermissionError` if the page wasn't shared with the integration.
+    """
+    from dreamwork.modules.onboarding.sources.notion import NotionImporter
+
+    return NotionImporter(link, client).preview()
+
+
+def import_notion(repo: Repository, round_id: str, link: str, client) -> ImportResult:
+    """Read a shared Notion database and merge it into core."""
+    return import_records(repo, round_id, preview_notion(link, client).records)
 
 
 def preview_tabular(text: str, *, source: Source = Source.PASTE) -> ImportPreview:

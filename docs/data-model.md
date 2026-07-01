@@ -19,36 +19,41 @@ required "tag" fields, each linked to a Markdown dossier** that holds everything
 An investor firm (fund). The firm-level record — this is the granularity the external
 book-face shares.
 
-> **PROPOSED ADDITION (Chris, for Thomas's review):** `website`, `team_members`,
-> `ticket_size_usd_range`, `portfolio_companies`, and `extantia_portfolio_overlap` below are new.
-> They came out of scoping the investor database: qualification only needs a handful of
-> filterable tags, but the "show a founder which other investors already know their fellow
-> Extantia portco CEOs" feature needs `extantia_portfolio_overlap` specifically — it's the field
-> that makes cross-portfolio visibility possible. `portfolio_companies` stays a plain string list
-> (most entries won't be Extantia companies and don't need their own record); only the overlap
-> subset is worth naming explicitly. Open to folding this into `dossier_path` freeform content
-> instead if you'd rather keep `Firm` lean — flagging for a call, not assuming the merge.
+The `website`, `team_members`, `ticket_size_usd_range`, `portfolio_companies`, and
+`extantia_portfolio_overlap` fields came out of Chris's investor-database deep dive (PR #1) and
+are accepted. `extantia_portfolio_overlap` is the one that powers cross-portfolio visibility —
+"which investors already know a founder's fellow Extantia portco CEOs" — so it's a named field,
+not buried in the dossier. `portfolio_companies` stays a plain string list; most entries aren't
+Extantia companies and don't need their own record.
 
 | Field              | Type            | Notes                                              |
 |--------------------|-----------------|----------------------------------------------------|
 | `id`               | id              |                                                    |
 | `name`             | str  (required) | The one always-required tag.                       |
-| `website`          | str?            | *Proposed.*                                        |
+| `website`          | str?            |                                                    |
 | `fund_size_usd`    | int?            | e.g. 200_000_000. Firm-level, shareable, corroborated. |
 | `aum_usd`          | int?            | Softer than cap-table facts; can be inferred.      |
 | `leads`            | bool?           | Does this firm lead rounds?                        |
 | `geographies`      | list[str]       | Qualification filter.                              |
 | `sectors`          | list[str]       | Qualification filter.                              |
 | `follows_on`       | bool?           | Tends to follow on in later rounds.                |
-| `team_members`     | list[str]       | *Proposed.* Freeform "Name — Title" entries.       |
-| `ticket_size_usd_range` | (int?, int?)? | *Proposed.* Typical check size, (min, max).     |
-| `portfolio_companies` | list[str]    | *Proposed.* Freeform, firm-reported.                |
-| `extantia_portfolio_overlap` | list[str] | *Proposed.* Subset of `portfolio_companies` that are also Extantia portfolio companies — powers cross-portfolio investor visibility. |
+| `team_members`     | list[str]       | Lightweight firm roster: freeform "Name — Title". See the Firm-vs-Partner note below. |
+| `ticket_size_usd_range` | (int?, int?)? | The firm's *typical* check size, (min, max). Distinct from `PipelineEntry.ticket_estimate_usd`, which is your estimate for *this* round. |
+| `portfolio_companies` | list[str]    | Freeform, firm-reported.                            |
+| `extantia_portfolio_overlap` | list[str] | Subset of `portfolio_companies` that are also Extantia portfolio companies — powers cross-portfolio investor visibility. Free strings for now; will reference real portco records once `external` lands. |
 | `dossier_path`     | str?            | → `data/dossiers/firm/<id>.md`                     |
 
 ### Partner
-A person at a firm. Relationships are tracked at *this* level — "who's my closest contact at
-Toyota Climate Fund" — not just firm level.
+A person at a firm you're **actively engaging** — the one you reference from a `PipelineEntry`
+or `IntroRequest`, and who earns a dossier and relationship tracking. Relationships live at
+*this* level: "who's my closest contact at Toyota Climate Fund".
+
+> **`team_members` vs `Partner`.** `Firm.team_members` is the cheap, complete roster (everyone
+> at the firm, captured as strings during onboarding). A `Partner` is *promoted* from that
+> roster the moment you start a real conversation with someone — that's when they need an id,
+> a dossier, influence notes, and the ability to be referenced by the pipeline. Roster =
+> `team_members`; engaged contact = `Partner`. Don't duplicate an engaged person back into
+> `team_members`.
 
 | Field           | Type            | Notes                                        |
 |-----------------|-----------------|----------------------------------------------|

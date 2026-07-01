@@ -50,11 +50,12 @@ class Firm:
     geographies: list[str] = field(default_factory=list)
     sectors: list[str] = field(default_factory=list)
     follows_on: bool | None = None
-    team_members: list[str] = field(default_factory=list)  # freeform "Name — Title" entries
+    team_members: list[str] = field(default_factory=list)  # lightweight roster: "Name — Title"
     ticket_size_usd_range: tuple[int | None, int | None] | None = None  # (min, max) typical check
     portfolio_companies: list[str] = field(default_factory=list)  # freeform, firm-reported
-    extantia_portfolio_overlap: list[str] = field(default_factory=list)  # subset of portfolio_companies
-    # that are also in the Extantia portfolio; the field the "who already knows this fund" feature reads.
+    # Subset of portfolio_companies that are also Extantia portcos — powers "who already knows
+    # this fund" cross-portfolio visibility.
+    extantia_portfolio_overlap: list[str] = field(default_factory=list)
     dossier_path: str | None = None  # -> data/dossiers/firm/<id>.md
 
 

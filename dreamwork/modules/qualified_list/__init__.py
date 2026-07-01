@@ -14,9 +14,8 @@ This file has job 2 (qualification). Job 1 (the Postgres Repository) is still op
 here works against any `Repository`, including `core.memory_store.InMemoryRepository`, so it
 doesn't block on Postgres landing.
 
-NOTE: `ticket_size_usd_range` and `extantia_portfolio_overlap` referenced below are proposed
-additions to `Firm` (see the `chris/propose-firm-fields` commit) — pending Thomas's review since
-`core/domain.py` is his. Qualification degrades gracefully if a Firm doesn't have them set.
+NOTE: qualification reads `ticket_size_usd_range` and `extantia_portfolio_overlap` on `Firm`
+(accepted in PR #1). It degrades gracefully if a Firm doesn't have them set.
 """
 
 from __future__ import annotations

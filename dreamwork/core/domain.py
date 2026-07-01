@@ -43,12 +43,18 @@ class Firm:
 
     id: str
     name: str  # the one always-required "tag"
+    website: str | None = None
     fund_size_usd: int | None = None
     aum_usd: int | None = None
     leads: bool | None = None
     geographies: list[str] = field(default_factory=list)
     sectors: list[str] = field(default_factory=list)
     follows_on: bool | None = None
+    team_members: list[str] = field(default_factory=list)  # freeform "Name — Title" entries
+    ticket_size_usd_range: tuple[int | None, int | None] | None = None  # (min, max) typical check
+    portfolio_companies: list[str] = field(default_factory=list)  # freeform, firm-reported
+    extantia_portfolio_overlap: list[str] = field(default_factory=list)  # subset of portfolio_companies
+    # that are also in the Extantia portfolio; the field the "who already knows this fund" feature reads.
     dossier_path: str | None = None  # -> data/dossiers/firm/<id>.md
 
 

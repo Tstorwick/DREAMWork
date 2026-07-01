@@ -56,6 +56,63 @@ python -c "from dreamwork.core.memory_store import seeded_store; print(seeded_st
 You don't need Postgres to start — `memory_store` makes everything work end-to-end. Chris's
 module swaps in the real database behind the same `Repository` contract, and nothing else changes.
 
+## Onboarding: get your investor list in (owner: Helge)
+
+The onboarding module imports a founder's investor list / cap table into `core`, deduping and
+merging so re-importing never creates duplicates. Every imported value carries where it came from
+(a source chip) and a confidence; a value you confirm by hand always outranks an inferred one.
+
+```python
+from dreamwork.core.memory_store import seeded_store
+from dreamwork.modules import onboarding
+
+repo = seeded_store()
+
+# 1. Paste anything: CSV, a tab/pipe-separated table, or a Markdown table.
+onboarding.import_tabular(repo, "r1", """
+Firm, Lead Partner, Check Size, Status, Focus
+Sequoia, Roelof Botha, $2M, in conversation, climate; mobility
+Accel, Rich Wong, 1.5M, met, saas
+""")
+
+# 2. Or a cap table as dict rows (the module contract).
+onboarding.import_captable(repo, "r1", [{"Firm": "Benchmark", "Partner": "Sarah", "Check": "$1.5M"}])
+```
+
+Columns are auto-mapped (`Firm`→firm, `Check Size`→ticket, `Status`→stage, `Focus`→sectors); call
+`onboarding.preview_tabular(text)` first to see the mapping before writing anything.
+
+### Import a Notion database
+
+A pasted Notion link (`app.notion.com/p/<id>?v=<view>`) is a **private** database. Two steps are
+required — the link alone can't be read:
+
+1. **Create an integration** at <https://www.notion.so/my-integrations>, copy its token, and set
+   it in your environment: `export NOTION_TOKEN=secret_xxx` (never commit it — `.env` is gitignored).
+2. **Share the database with the integration:** in Notion, open the page → `•••` menu →
+   *Connections* → *Connect to* → your integration. Notion only exposes pages you explicitly share.
+
+```bash
+pip install -e ".[notion]"    # installs the Notion SDK
+```
+
+```python
+from dreamwork.modules import onboarding
+from dreamwork.modules.onboarding.sources.notion import build_notion_client
+
+client = build_notion_client()          # reads NOTION_TOKEN
+onboarding.import_notion(repo, "r1", "https://app.notion.com/p/<id>?v=<view>", client)
+```
+
+Notes: the API reads the **database**, not the view — a view's filters/sorts don't apply, so every
+row imports. If you haven't shared the page, you get a clear "share this page with DreamWork" message
+with a deep link instead of an error.
+
+### Through the MCP server / Claude
+
+The same imports are exposed as MCP tools (`preview_import`, `import_investors`,
+`import_notion_database`), so you can drive onboarding by talking to Claude once the server is running.
+
 ## Picking up your piece
 
 1. Fork `main`, make a branch (`git checkout -b dashboard-jamie`).

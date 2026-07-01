@@ -43,11 +43,18 @@ async function loadData() {
 
   const round = rounds[0];
 
-  const [investors, firms, intros] = await Promise.all([
+  const [investors, firms, intros, rawActivity] = await Promise.all([
     apiGet("/rounds/" + round.id + "/investors"),
     apiGet("/firms"),
     apiGet("/rounds/" + round.id + "/intros"),
+    apiGet("/rounds/" + round.id + "/activity"),
   ]);
+
+  // Map the API's activity shape to what renderTimeline reads: a.date, a.type, a.investorId, a.text.
+  // a.investorId is the entry id, which equals an investor row id (so getInvestorById matches).
+  const activity = rawActivity.map((a) => ({
+    id: a.id, date: a.occurredAt, type: a.kind, investorId: a.entryId, text: a.text,
+  }));
 
   // Decorate each investor row IN PLACE with prototype-only display fields the API doesn't supply.
   investors.forEach((inv) => {
@@ -74,7 +81,7 @@ async function loadData() {
 
   // Populate DW_DATA IN PLACE so references captured by other scripts stay valid.
   Object.assign(DW_DATA, {
-    round, founder, investors, firms, intros,
-    peers: [], activity: [],
+    round, founder, investors, firms, intros, activity,
+    peers: [],
   });
 }

@@ -19,3 +19,13 @@ async function apiPatch(path, body) {
   if (!r.ok) throw new Error(r.status + " " + path);
   return r.json();
 }
+
+async function apiPost(path, body) {
+  const r = await fetch(API_BASE + path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(r.status + " " + path);
+  return r.json();
+}

@@ -16,6 +16,7 @@ from typing import Protocol
 
 from dreamwork.core.domain import (
     Firm,
+    Interaction,
     IntroRequest,
     Partner,
     PipelineEntry,
@@ -47,3 +48,7 @@ class Repository(Protocol):
     # --- Intro requests ---------------------------------------------------
     def add_intro_request(self, req: IntroRequest) -> IntroRequest: ...
     def list_intro_requests(self, round_id: str) -> list[IntroRequest]: ...
+
+    # --- Interactions (activity feed) -------------------------------------
+    def add_interaction(self, interaction: Interaction) -> Interaction: ...
+    def list_interactions(self, round_id: str) -> list[Interaction]: ...

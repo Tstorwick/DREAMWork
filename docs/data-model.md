@@ -112,6 +112,19 @@ investor can be reached via several intro paths, and intro asks have their own l
 | `status`           | str           | e.g. requested / offered / made / declined.    |
 | `requested_at`     | date?         |                                                |
 
+### Interaction  ← the activity feed
+A logged touchpoint with an investor in a round. Logging one is also how a `PipelineEntry`'s
+`last_contact_date` gets bumped (which drives the "gone cold" reminders).
+
+| Field         | Type          | Notes                                              |
+|---------------|---------------|----------------------------------------------------|
+| `id`          | id            |                                                    |
+| `round_id`    | → Round       |                                                    |
+| `entry_id`    | → PipelineEntry | The investor-in-round this touchpoint is about.  |
+| `kind`        | str           | note / email / call / meeting / outbound / inbound |
+| `text`        | str           | What happened.                                     |
+| `occurred_at` | date?         |                                                    |
+
 ## Cap table = source of truth
 Onboarding seeds Firms/Partners from a founder's cap table: it's the authoritative source for
 **firm, check size, and first-check date** (from which we infer relationship tenure — "known 5

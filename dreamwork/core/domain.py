@@ -120,3 +120,19 @@ class IntroRequest:
     channel: str | None = None  # suggested channel: email, WhatsApp, ...
     status: str = "requested"  # requested / offered / made / declined
     requested_at: date | None = None
+
+
+@dataclass
+class Interaction:
+    """A logged touchpoint with an investor in a round — the activity feed.
+
+    Each one is about a specific PipelineEntry (`entry_id`). Logging an interaction is also how
+    `last_contact_date` on that entry gets bumped, which drives the dashboard's "gone cold" logic.
+    """
+
+    id: str
+    round_id: str
+    entry_id: str  # the PipelineEntry this touchpoint is about
+    kind: str  # note / email / call / meeting / outbound / inbound ...
+    text: str
+    occurred_at: date | None = None

@@ -15,6 +15,7 @@ fastapi's TestClient without ever binding a socket.
 
 from __future__ import annotations
 
+import uuid
 from datetime import date
 
 from fastapi import FastAPI, HTTPException
@@ -24,7 +25,9 @@ from pydantic import BaseModel
 from dreamwork.config import get_repository
 from dreamwork.core.domain import (
     Firm,
+    Interaction,
     IntroRequest,
+    Partner,
     PipelineEntry,
     Round,
     Stage,
@@ -127,6 +130,26 @@ def _investor_row(repo: Repository, entry: PipelineEntry) -> dict:
     }
 
 
+def _activity_item(repo: Repository, interaction: Interaction) -> dict:
+    """An Interaction serialized for the activity feed, resolving its entry's partner/firm
+    into a human-readable `investorName` (partner name wins, else firm name, else null)."""
+    entry = repo.get_pipeline_entry(interaction.entry_id)
+    investor_name = None
+    if entry is not None:
+        partner = repo.get_partner(entry.partner_id) if entry.partner_id else None
+        firm = repo.get_firm(entry.firm_id)
+        investor_name = partner.name if partner else (firm.name if firm else None)
+    return {
+        "id": interaction.id,
+        "roundId": interaction.round_id,
+        "entryId": interaction.entry_id,
+        "kind": interaction.kind,
+        "text": interaction.text,
+        "occurredAt": _iso(interaction.occurred_at),
+        "investorName": investor_name,
+    }
+
+
 # --- app + repo ---------------------------------------------------------------
 
 app = FastAPI(title="DreamWork")
@@ -147,6 +170,23 @@ except Exception:
 class PipelinePatch(BaseModel):
     stage: str | None = None
     outcome: str | None = None
+
+
+class NewInvestor(BaseModel):
+    name: str | None = None  # the person (partner); optional
+    firm: str  # required
+    stage: str = "sourced"
+    ticketMinUsd: int | None = None
+    ticketMaxUsd: int | None = None
+    ticketEstimateUsd: int | None = None
+    notes: str | None = None
+
+
+class NewActivity(BaseModel):
+    entryId: str
+    kind: str = "note"
+    text: str
+    date: str | None = None  # ISO date; defaults to today when omitted
 
 
 # --- API routes ---------------------------------------------------------------
@@ -228,6 +268,100 @@ def patch_pipeline(entry_id: str, patch: PipelinePatch) -> dict:
         entry.outcome = new_outcome
     repo.update_pipeline_entry(entry)
     return _investor_row(repo, entry)
+
+
+@app.post("/api/rounds/{round_id}/investors")
+def create_investor(round_id: str, body: NewInvestor) -> dict:
+    if repo.get_round(round_id) is None:
+        raise HTTPException(status_code=404, detail="round not found")
+
+    firm_name = body.firm.strip()
+    if not firm_name:
+        raise HTTPException(status_code=400, detail="firm is required")
+
+    try:
+        stage = Stage(body.stage)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"invalid stage: {body.stage}")
+
+    # Only build a ticket range when at least one bound is given; otherwise leave it unset.
+    ticket_range = (
+        (body.ticketMinUsd, body.ticketMaxUsd)
+        if (body.ticketMinUsd or body.ticketMaxUsd)
+        else None
+    )
+
+    firm = Firm(
+        id="f_" + uuid.uuid4().hex[:8],
+        name=firm_name,
+        ticket_size_usd_range=ticket_range,
+    )
+    # `notes` is accepted but not persisted: the core model has no firm-notes column.
+    # Freeform notes belong in a dossier (core/dossiers.py), which is out of scope here.
+    repo.add_firm(firm)
+
+    partner = None
+    if body.name and body.name.strip():
+        partner = Partner(
+            id="pt_" + uuid.uuid4().hex[:8],
+            firm_id=firm.id,
+            name=body.name.strip(),
+        )
+        repo.add_partner(partner)
+
+    # Firm (and partner) are added before the entry so an FK-enforcing store sees them first.
+    entry = PipelineEntry(
+        id="pe_" + uuid.uuid4().hex[:8],
+        round_id=round_id,
+        firm_id=firm.id,
+        partner_id=partner.id if partner else None,
+        stage=stage,
+        outcome=Outcome.ACTIVE,
+        ticket_estimate_usd=body.ticketEstimateUsd,
+    )
+    repo.add_pipeline_entry(entry)
+    return _investor_row(repo, entry)
+
+
+@app.get("/api/rounds/{round_id}/activity")
+def round_activity(round_id: str) -> list:
+    interactions = repo.list_interactions(round_id)
+    # Newest first; interactions with no date sort last.
+    interactions = sorted(
+        interactions,
+        key=lambda i: (i.occurred_at is not None, i.occurred_at),
+        reverse=True,
+    )
+    return [_activity_item(repo, i) for i in interactions]
+
+
+@app.post("/api/rounds/{round_id}/activity")
+def log_activity(round_id: str, body: NewActivity) -> dict:
+    if repo.get_round(round_id) is None:
+        raise HTTPException(status_code=404, detail="round not found")
+
+    entry = repo.get_pipeline_entry(body.entryId)
+    if entry is None or entry.round_id != round_id:
+        raise HTTPException(status_code=404, detail="pipeline entry not found")
+
+    if not body.text or not body.text.strip():
+        raise HTTPException(status_code=400, detail="text is required")
+
+    occurred_at = date.fromisoformat(body.date) if body.date else date.today()
+    interaction = Interaction(
+        id="ix_" + uuid.uuid4().hex[:8],
+        round_id=round_id,
+        entry_id=body.entryId,
+        kind=body.kind,
+        text=body.text,
+        occurred_at=occurred_at,
+    )
+    repo.add_interaction(interaction)
+
+    # Logging a touchpoint bumps the entry's last-contact date (drives "gone cold" logic).
+    entry.last_contact_date = occurred_at
+    repo.update_pipeline_entry(entry)
+    return _activity_item(repo, interaction)
 
 
 # Mount the static UI LAST so it doesn't shadow the /api routes above.

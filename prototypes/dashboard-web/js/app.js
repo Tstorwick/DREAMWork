@@ -123,53 +123,16 @@ function openAddInvestorModal() {
 
   document.getElementById("modal-close").addEventListener("click", closeModal);
   document.getElementById("modal-cancel").addEventListener("click", closeModal);
-  document.getElementById("modal-save").addEventListener("click", () => {
+  document.getElementById("modal-save").addEventListener("click", async () => {
     const name = document.getElementById("f-name").value.trim();
     const firm = document.getElementById("f-firm").value.trim();
-    if (!name || !firm) {
-      showToast("Name and firm are required");
-      return;
-    }
-    const initials = name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
-    const colors = ["#6ee7b7", "#93c5fd", "#fca5a5", "#fcd34d", "#a5b4fc", "#67e8f9", "#f9a8d4", "#c4b5fd", "#fdba74"];
-    const checkMin = Number(document.getElementById("f-checkmin").value) || 0;
-    const checkMax = Number(document.getElementById("f-checkmax").value) || 0;
-    // Shaped like the PipelineEntry ⋈ Firm ⋈ Partner join the views read (see data.js).
-    const newInvestor = {
-      id: "i" + Date.now(),
-      // canonical entry state
-      stage: document.getElementById("f-stage").value,
-      outcome: "active",
-      isLead: false,
-      ticketEstimateUsd: checkMin && checkMax ? Math.round((checkMin + checkMax) / 2) : (checkMax || checkMin || null),
-      firstContact: "2026-07-01",
-      lastActivity: "2026-07-01",
-      nextStep: null,
-      snoozeUntil: null,
-      // joined display fields
-      name, firm,
-      type: document.getElementById("f-type").value,
-      role: "—",
-      ticketRange: [checkMin, checkMax],
-      sectors: ["Unspecified"],
-      location: "—",
-      stageFocus: [DW_DATA.round.label],
-      leads: false,
-      initials, color: colors[Math.floor(Math.random() * colors.length)],
-      // prototype-only extras
-      direction: document.getElementById("f-direction").value,
-      introducedBy: null,
-      peerIds: [],
-      notes: document.getElementById("f-notes").value.trim() || "No notes yet.",
-    };
-    DW_DATA.investors.unshift(newInvestor);
-    DW_DATA.activity.unshift({
-      id: "a" + Date.now(), date: "2026-07-01", type: newInvestor.direction,
-      investorId: newInvestor.id, text: `Added ${newInvestor.name} (${newInvestor.firm}) to the network.`,
-    });
-    closeModal();
-    showToast(`Added ${newInvestor.name}`);
-    renderCurrentView();
+    if (!firm) { showToast("Firm is required"); return; }
+    const min = Number(document.getElementById("f-checkmin").value) || null;
+    const max = Number(document.getElementById("f-checkmax").value) || null;
+    try {
+      await apiPost("/rounds/" + DW_DATA.round.id + "/investors", { name, firm, stage: document.getElementById("f-stage").value, ticketMinUsd: min, ticketMaxUsd: max, notes: document.getElementById("f-notes").value.trim() });
+      await loadData(); closeModal(); showToast("Added " + (name || firm)); renderCurrentView();
+    } catch (e) { console.error(e); showToast("Could not add investor"); }
   });
 }
 
@@ -207,20 +170,15 @@ function openLogActivityModal() {
 
   document.getElementById("modal-close").addEventListener("click", closeModal);
   document.getElementById("modal-cancel").addEventListener("click", closeModal);
-  document.getElementById("modal-save").addEventListener("click", () => {
-    const investorId = document.getElementById("f-investor").value;
-    const type = document.getElementById("f-act-type").value;
+  document.getElementById("modal-save").addEventListener("click", async () => {
+    const entryId = document.getElementById("f-investor").value;
+    const kind = document.getElementById("f-act-type").value;
     const text = document.getElementById("f-act-text").value.trim();
-    const inv = getInvestorById(investorId);
-    if (!inv || !text) {
-      showToast("Please add a note");
-      return;
-    }
-    DW_DATA.activity.unshift({ id: "a" + Date.now(), date: "2026-07-01", type, investorId, text });
-    inv.lastActivity = "2026-07-01";
-    closeModal();
-    showToast("Activity logged");
-    renderCurrentView();
+    if (!text) { showToast("Please add a note"); return; }
+    try {
+      await apiPost("/rounds/" + DW_DATA.round.id + "/activity", { entryId, kind, text });
+      await loadData(); closeModal(); showToast("Activity logged"); renderCurrentView();
+    } catch (e) { console.error(e); showToast("Could not log activity"); }
   });
 }
 

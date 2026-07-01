@@ -20,6 +20,7 @@ from psycopg.rows import dict_row
 
 from dreamwork.core.domain import (
     Firm,
+    Interaction,
     IntroRequest,
     Outcome,
     Partner,
@@ -47,6 +48,7 @@ _INTRO_COLS = (
     "id", "round_id", "target_firm_id", "target_partner_id", "asked_of", "channel",
     "status", "requested_at",
 )
+_INTERACTION_COLS = ("id", "round_id", "entry_id", "kind", "text", "occurred_at")
 
 
 def _upsert_sql(table: str, cols: tuple[str, ...]) -> str:
@@ -164,11 +166,26 @@ class PostgresRepository:
         ).fetchall()
         return [_intro_from_row(r) for r in rows]
 
+    # --- Interactions -----------------------------------------------------
+    def add_interaction(self, interaction: Interaction) -> Interaction:
+        self.conn.execute(_upsert_sql("interaction", _INTERACTION_COLS), (
+            interaction.id, interaction.round_id, interaction.entry_id, interaction.kind,
+            interaction.text, interaction.occurred_at,
+        ))
+        return interaction
+
+    def list_interactions(self, round_id: str) -> list[Interaction]:
+        rows = self.conn.execute(
+            "SELECT * FROM interaction WHERE round_id = %s ORDER BY id", (round_id,)
+        ).fetchall()
+        return [_interaction_from_row(r) for r in rows]
+
     # --- Test support -----------------------------------------------------
     def _truncate_all(self) -> None:
         """Wipe every table — used by the contract tests to start from a clean slate."""
         self.conn.execute(
-            "TRUNCATE intro_request, pipeline_entry, partner, round, firm RESTART IDENTITY CASCADE"
+            "TRUNCATE interaction, intro_request, pipeline_entry, partner, round, firm "
+            "RESTART IDENTITY CASCADE"
         )
 
 
@@ -223,4 +240,11 @@ def _intro_from_row(r: dict) -> IntroRequest:
         id=r["id"], round_id=r["round_id"], target_firm_id=r["target_firm_id"],
         target_partner_id=r["target_partner_id"], asked_of=r["asked_of"], channel=r["channel"],
         status=r["status"], requested_at=r["requested_at"],
+    )
+
+
+def _interaction_from_row(r: dict) -> Interaction:
+    return Interaction(
+        id=r["id"], round_id=r["round_id"], entry_id=r["entry_id"], kind=r["kind"],
+        text=r["text"], occurred_at=r["occurred_at"],
     )

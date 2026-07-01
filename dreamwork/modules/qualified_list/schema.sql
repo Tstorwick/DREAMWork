@@ -71,3 +71,13 @@ CREATE TABLE IF NOT EXISTS intro_request (
     requested_at      DATE
 );
 CREATE INDEX IF NOT EXISTS intro_round_id_idx ON intro_request (round_id);
+
+CREATE TABLE IF NOT EXISTS interaction (
+    id          TEXT PRIMARY KEY,
+    round_id    TEXT NOT NULL REFERENCES round(id) ON DELETE CASCADE,
+    entry_id    TEXT NOT NULL REFERENCES pipeline_entry(id) ON DELETE CASCADE,
+    kind        TEXT NOT NULL,
+    text        TEXT NOT NULL,
+    occurred_at DATE
+);
+CREATE INDEX IF NOT EXISTS interaction_round_id_idx ON interaction (round_id);

@@ -193,3 +193,79 @@ def test_patch_pipeline_invalid_stage_400(client):
 def test_patch_pipeline_missing_entry_404(client):
     resp = client.patch("/api/pipeline/nope", json={"stage": "meeting"})
     assert resp.status_code == 404
+
+
+def test_create_investor_creates_row(client):
+    resp = client.post(
+        f"/api/rounds/{ROUND_ID}/investors",
+        json={
+            "name": "Alex Rivera",
+            "firm": "Evergreen Capital",
+            "stage": "meeting",
+            "ticketMinUsd": 500_000,
+            "ticketMaxUsd": 2_000_000,
+            "ticketEstimateUsd": 1_000_000,
+            "notes": "warm intro from a friend",
+        },
+    )
+    assert resp.status_code == 200
+    row = resp.json()
+    assert row["stage"] == "meeting"
+    assert row["outcome"] == "active"
+    assert row["firm"] == "Evergreen Capital"
+    assert row["name"] == "Alex Rivera"  # partner name wins over firm name
+    assert row["ticketEstimateUsd"] == 1_000_000
+    assert row["ticketRange"] == [500_000, 2_000_000]
+
+    # Persisted: it shows up in the investor list for the round.
+    listing = client.get(f"/api/rounds/{ROUND_ID}/investors").json()
+    assert any(r["entryId"] == row["entryId"] for r in listing)
+
+
+def test_create_investor_missing_firm_400(client):
+    resp = client.post(
+        f"/api/rounds/{ROUND_ID}/investors", json={"firm": "   "}
+    )
+    assert resp.status_code == 400
+
+
+def test_activity_returns_list(client):
+    resp = client.get(f"/api/rounds/{ROUND_ID}/activity")
+    assert resp.status_code == 200
+    assert isinstance(resp.json(), list)
+
+
+def test_log_activity_creates_and_bumps_last_contact(client):
+    resp = client.post(
+        f"/api/rounds/{ROUND_ID}/activity",
+        json={
+            "entryId": ENTRY_A,
+            "kind": "email",
+            "text": "Sent the follow-up deck.",
+            "date": "2026-03-15",
+        },
+    )
+    assert resp.status_code == 200
+    item = resp.json()
+    assert item["entryId"] == ENTRY_A
+    assert item["kind"] == "email"
+    assert item["text"] == "Sent the follow-up deck."
+    assert item["occurredAt"] == "2026-03-15"
+    assert item["investorName"] == "Dana Lee"  # resolved from the entry's partner
+
+    # It appears in the activity feed.
+    feed = client.get(f"/api/rounds/{ROUND_ID}/activity").json()
+    assert any(i["id"] == item["id"] for i in feed)
+
+    # The target entry's last-contact date was bumped to the interaction date.
+    rows = client.get(f"/api/rounds/{ROUND_ID}/investors").json()
+    updated = next(r for r in rows if r["entryId"] == ENTRY_A)
+    assert updated["lastActivity"] == "2026-03-15"
+
+
+def test_log_activity_bad_entry_404(client):
+    resp = client.post(
+        f"/api/rounds/{ROUND_ID}/activity",
+        json={"entryId": "nope", "text": "hello"},
+    )
+    assert resp.status_code == 404

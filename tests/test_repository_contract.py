@@ -17,6 +17,7 @@ import pytest
 
 from dreamwork.core.domain import (
     Firm,
+    Interaction,
     IntroRequest,
     Outcome,
     Partner,
@@ -169,3 +170,31 @@ def test_intro_requests_scoped_to_round(repo):
     got = repo.list_intro_requests("r1")
     assert len(got) == 1 and got[0].asked_of == "A mutual"
     assert repo.list_intro_requests("r2") == []
+
+
+# --- Interactions -------------------------------------------------------------
+
+def test_interaction_roundtrip_preserves_every_field(repo):
+    _seed_firm_and_round(repo)
+    repo.add_pipeline_entry(PipelineEntry(id="pe1", round_id="r1", firm_id="f1"))
+    interaction = Interaction(
+        id="in1", round_id="r1", entry_id="pe1", kind="call",
+        text="Left a voicemail about the deck.", occurred_at=date(2026, 6, 12),
+    )
+    repo.add_interaction(interaction)
+    got = repo.list_interactions("r1")
+    assert len(got) == 1
+    assert got[0] == interaction  # dataclass equality: kind, text, date all survive
+
+
+def test_list_interactions_scopes_to_round(repo):
+    # Two rounds, each with its own entry; an interaction in r1 must not show under r2.
+    repo.add_firm(Firm(id="f1", name="Breakthrough Energy"))
+    repo.add_round(Round(id="r1", company="Acme Climate"))
+    repo.add_round(Round(id="r2", company="Acme II"))
+    repo.add_pipeline_entry(PipelineEntry(id="pe1", round_id="r1", firm_id="f1"))
+    repo.add_pipeline_entry(PipelineEntry(id="pe2", round_id="r2", firm_id="f1"))
+    repo.add_interaction(Interaction(id="in1", round_id="r1", entry_id="pe1", kind="note", text="r1"))
+    repo.add_interaction(Interaction(id="in2", round_id="r2", entry_id="pe2", kind="note", text="r2"))
+    assert {i.id for i in repo.list_interactions("r1")} == {"in1"}
+    assert {i.id for i in repo.list_interactions("r2")} == {"in2"}

@@ -12,6 +12,7 @@ from datetime import date
 
 from dreamwork.core.domain import (
     Firm,
+    Interaction,
     IntroRequest,
     Outcome,
     Partner,
@@ -30,6 +31,7 @@ class InMemoryRepository:
         self._rounds: dict[str, Round] = {}
         self._pipeline: dict[str, PipelineEntry] = {}
         self._intros: dict[str, IntroRequest] = {}
+        self._interactions: dict[str, Interaction] = {}
 
     # --- Firms & Partners -------------------------------------------------
     def add_firm(self, firm: Firm) -> Firm:
@@ -88,6 +90,14 @@ class InMemoryRepository:
 
     def list_intro_requests(self, round_id: str) -> list[IntroRequest]:
         return [r for r in self._intros.values() if r.round_id == round_id]
+
+    # --- Interactions (activity feed) -------------------------------------
+    def add_interaction(self, interaction: Interaction) -> Interaction:
+        self._interactions[interaction.id] = interaction
+        return interaction
+
+    def list_interactions(self, round_id: str) -> list[Interaction]:
+        return [i for i in self._interactions.values() if i.round_id == round_id]
 
 
 def seeded_store() -> InMemoryRepository:

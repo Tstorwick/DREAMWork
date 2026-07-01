@@ -14,6 +14,7 @@ from datetime import date
 
 from dreamwork.core.domain import (
     Firm,
+    Interaction,
     IntroRequest,
     Outcome,
     Partner,
@@ -66,6 +67,30 @@ _FIRMS = [
     ("brightline", "Brightline Fund", "https://brightline.fund",
      22_000_000, None, False, ["Denver, CO"], ["Climate", "Hardware"],
      True, (200_000, 800_000), True, 3, "Owen Fitzgerald", "Partner"),
+]
+
+# Logged touchpoints for round "r1" — the activity feed. Each references a pipeline entry
+# created above (pe_<slug>) so the join to firm/partner resolves. Varied `kind` and 2026
+# dates give the feed a lifelike mix of emails, meetings, calls, notes, and outbound.
+#
+# (entry_slug, kind, text, occurred_at)
+_INTERACTIONS = [
+    ("northgate", "meeting", "Partner meeting went well — they're drafting a term sheet.",
+     date(2026, 6, 26)),
+    ("bluepeak", "email", "Sent updated data room link and latest cap table.",
+     date(2026, 6, 24)),
+    ("summit", "call", "Walked through the technical architecture on a 45-min call.",
+     date(2026, 6, 25)),
+    ("riverbend", "outbound", "Emailed deck and asked for an intro call next week.",
+     date(2026, 6, 22)),
+    ("cedar", "note", "Priya wants to see one more month of retention data before deciding.",
+     date(2026, 6, 20)),
+    ("orchard", "email", "Shared the latest revenue metrics and churn breakdown.",
+     date(2026, 6, 19)),
+    ("harbor", "meeting", "First syndicate call — positive, scheduling a follow-up.",
+     date(2026, 6, 18)),
+    ("brightline", "note", "SAFE countersigned; adding them to the cap table.",
+     date(2026, 6, 12)),
 ]
 
 # Per-firm pipeline state for round "r1". Spread across every canonical Stage, and across
@@ -180,7 +205,21 @@ def seed_demo(repo) -> None:
             )
         )
 
-    # 4. Intro requests — a separate funnel; target firms already exist.
+    # 4. Interactions — the activity feed. Entries above already exist, so each touchpoint's
+    #    entry_id resolves. Kept after entries to preserve referential order.
+    for (entry_slug, kind, text, occurred_at) in _INTERACTIONS:
+        repo.add_interaction(
+            Interaction(
+                id=f"ix_{entry_slug}_{occurred_at.month:02d}{occurred_at.day:02d}",
+                round_id="r1",
+                entry_id=f"pe_{entry_slug}",
+                kind=kind,
+                text=text,
+                occurred_at=occurred_at,
+            )
+        )
+
+    # 5. Intro requests — a separate funnel; target firms already exist.
     repo.add_intro_request(
         IntroRequest(
             id="ir_keystone",

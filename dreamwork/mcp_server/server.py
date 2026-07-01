@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from dreamwork.core.memory_store import seeded_store
+from dreamwork.config import get_repository
 from dreamwork.core.repository import Repository
 from dreamwork.modules import dashboard, onboarding
 
@@ -22,9 +22,9 @@ except ImportError as exc:  # pragma: no cover - gives newcomers a clear message
         f"(original error: {exc})"
     )
 
-# In v1 the internal CRM is one founder's local data. We hold a single Repository for the
-# process. Today it's the seeded in-memory store; later this becomes Chris's PostgresRepository.
-repo: Repository = seeded_store()
+# In v1 the internal CRM is one founder's local data. One Repository per process, chosen by
+# config: set DREAMWORK_DB_URL for the real Postgres store, else a seeded in-memory store for demo.
+repo: Repository = get_repository(seed_if_memory=True)
 
 mcp = FastMCP("dreamwork")
 

@@ -10,9 +10,10 @@ Two jobs (see docs/module-contracts.md):
      filtering/scoring by round, ticket size, geography, sector, stage. A no or a next-round fit
      becomes an Outcome flag on the PipelineEntry, never a deletion (see docs/pipeline.md).
 
-This file has job 2 (qualification). Job 1 (the Postgres Repository) is still open — everything
-here works against any `Repository`, including `core.memory_store.InMemoryRepository`, so it
-doesn't block on Postgres landing.
+Job 1 (the Postgres Repository) lives in `store.py` as `PostgresRepository`, applied via
+`schema.sql`. The app selects it through `dreamwork.config.get_repository()` when
+`DREAMWORK_DB_URL` is set; otherwise it runs on the in-memory store. This file is job 2
+(qualification), which works against any `Repository`.
 
 NOTE: qualification reads `ticket_size_usd_range` and `extantia_portfolio_overlap` on `Firm`
 (accepted in PR #1). It degrades gracefully if a Firm doesn't have them set.

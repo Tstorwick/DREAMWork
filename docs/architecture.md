@@ -47,8 +47,9 @@ keeping the modules ignorant of each other.
 ## The two databases (and why one is mocked)
 
 - **Internal CRM → local Postgres.** Each founder runs their own. It's private. In v1 there
-  is no multi-tenancy and no auth — it's one founder's data on one machine. Until Chris wires
-  Postgres up, `core/memory_store.py` stands in so everything runs.
+  is no multi-tenancy and no auth — it's one founder's data on one machine. The real store is
+  `modules/qualified_list/store.py` (`PostgresRepository` + `schema.sql`); `get_repository()`
+  selects it when `DREAMWORK_DB_URL` is set, else `core/memory_store.py` runs with zero setup.
 - **External "book face" → Extantia Google Cloud (later).** Shared across the portfolio. We
   do **not** stand up cloud infra during the hackathon. Instead, `modules/external` defines a
   `BookFaceClient` interface with a **local mock** (`LocalMockBookFace`). Everything you build

@@ -53,8 +53,27 @@ python -m dreamwork.mcp_server
 python -c "from dreamwork.core.memory_store import seeded_store; print(seeded_store().list_firms())"
 ```
 
-You don't need Postgres to start — `memory_store` makes everything work end-to-end. Chris's
-module swaps in the real database behind the same `Repository` contract, and nothing else changes.
+You don't need Postgres to start — `memory_store` makes everything work end-to-end.
+
+### Running against the real Postgres store
+
+The real store (`modules/qualified_list/store.py`) is available behind the same `Repository`
+contract — set `DREAMWORK_DB_URL` and it's used automatically; unset, you get the in-memory store.
+
+```bash
+# 1. Install the optional driver
+.venv/bin/pip install -e ".[postgres]"
+
+# 2. Bring up a local Postgres (Docker)
+docker run --rm -d --name dreamwork-pg -e POSTGRES_PASSWORD=x -p 5432:5432 postgres:16
+
+# 3. Point DreamWork at it — the schema is created automatically on first connect
+export DREAMWORK_DB_URL=postgresql://postgres:x@localhost:5432/postgres
+python -m dreamwork.mcp_server
+```
+
+`tests/test_repository_contract.py` runs the same assertions against both stores; point
+`DREAMWORK_TEST_DB_URL` at a throwaway database to include Postgres in the run.
 
 ## Onboarding: get your investor list in (owner: Helge)
 

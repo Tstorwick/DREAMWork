@@ -14,8 +14,9 @@ dev = [
 ]
 # Only needed to import a live Notion database (onboarding). Everything else runs without it.
 notion = ["notion-client>=2.2"]
-# Chris's Postgres Repository will add its driver here, e.g.:
-# postgres = ["psycopg[binary]>=3.2", "sqlalchemy>=2.0"]
+# Only needed for the real Postgres store (modules/qualified_list/store.py). The app runs on the
+# in-memory store without it; set DREAMWORK_DB_URL to switch on Postgres.
+postgres = ["psycopg[binary]>=3.2"]
 
 [project.scripts]
 dreamwork-mcp = "dreamwork.mcp_server.server:main"

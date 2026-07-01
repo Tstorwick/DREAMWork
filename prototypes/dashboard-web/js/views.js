@@ -25,7 +25,7 @@ function renderOverview() {
       ${statCard("Active Conversations", m.activeCount, `${fmtMoney(m.pipelineValue)} pipeline value`, "flat")}
       ${statCard("Close Rate", m.closeRate + "%", `${m.closedWon} of ${m.total} investors closed`, m.closeRate >= 15 ? "up" : "flat")}
       ${statCard("Response Rate", m.responseRate + "%", `${m.snoozed} snoozed · ${m.nextRound} next-round`, m.responseRate >= 70 ? "up" : "down")}
-      ${statCard("Network Size", m.total, `${m.inboundCount} inbound · ${m.outboundCount} outbound`, "flat")}
+      ${statCard("Network Size", m.total, `${m.activeCount} active · ${m.passed} passed · ${m.nextRound} next-round`, "flat")}
     </div>
 
     <div class="grid-2">
@@ -42,8 +42,8 @@ function renderOverview() {
       <div class="panel">
         <div class="panel-header">
           <div>
-            <h3 class="panel-title">Inbound vs. Outbound</h3>
-            <p class="panel-sub">Close rate by connection origin</p>
+            <h3 class="panel-title">Pipeline by Stage</h3>
+            <p class="panel-sub">Where your investors are right now</p>
           </div>
         </div>
         <div class="chart-wrap"><canvas id="status-chart"></canvas></div>
@@ -86,7 +86,7 @@ function renderOverview() {
   });
 
   renderFunnelChart(m.funnel);
-  renderStatusChart(m);
+  renderStatusChart();
 }
 
 function statCard(label, value, delta, trend) {
@@ -126,17 +126,24 @@ function renderFunnelChart(funnel) {
   });
 }
 
-function renderStatusChart(m) {
+function renderStatusChart() {
   const ctx = document.getElementById("status-chart");
   if (!ctx) return;
   if (_statusChart) _statusChart.destroy();
+  const counts = {};
+  DW_DATA.investors.forEach((i) => { counts[i.stage] = (counts[i.stage] || 0) + 1; });
+  const stages = STAGE_ORDER.filter((s) => counts[s]);
+  const stageColor = {
+    sourced: "#6b7686", intro_requested: "#6b7686", contacted: "#60a5fa", meeting: "#38bdf8",
+    in_conversation: "#818cf8", diligence: "#fbbf24", committed: "#c084fc", closed: "#4ade80",
+  };
   _statusChart = new Chart(ctx, {
     type: "doughnut",
     data: {
-      labels: [`Inbound (${m.inboundCloseRate}% close)`, `Outbound (${m.outboundCloseRate}% close)`],
+      labels: stages.map((s) => `${STAGE_LABELS[s]} (${counts[s]})`),
       datasets: [{
-        data: [m.inboundCount, m.outboundCount],
-        backgroundColor: ["#60a5fa", "#fbbf24"],
+        data: stages.map((s) => counts[s]),
+        backgroundColor: stages.map((s) => stageColor[s] || "#6b7686"),
         borderColor: "#131822",
         borderWidth: 3,
       }],
@@ -204,9 +211,6 @@ function renderInvestors() {
     </div>
 
     <div class="filter-bar">
-      <button class="chip ${investorsState.direction === "all" ? "active" : ""}" data-dir="all">All</button>
-      <button class="chip ${investorsState.direction === "inbound" ? "active" : ""}" data-dir="inbound">Inbound</button>
-      <button class="chip ${investorsState.direction === "outbound" ? "active" : ""}" data-dir="outbound">Outbound</button>
       <div class="filter-spacer"></div>
       <select class="select-input" id="status-filter">
         <option value="all">All stages</option>
@@ -220,7 +224,6 @@ function renderInvestors() {
           <thead>
             <tr>
               <th data-sort="name">Investor</th>
-              <th data-sort="direction">Direction</th>
               <th data-sort="stage">Stage</th>
               <th data-sort="ticketEstimateUsd">Est. Ticket</th>
               <th data-sort="isLead">Lead</th>
@@ -300,14 +303,13 @@ function renderInvestorsTable() {
             </div>
           </div>
         </td>
-        <td><span class="badge ${badgeForDirection(inv.direction)}">${inv.direction}</span></td>
         <td>${statusBadges(inv)}</td>
         <td>${inv.ticketEstimateUsd ? fmtMoney(inv.ticketEstimateUsd) : checkRange(inv)}</td>
         <td>${leadBadge(inv.isLead)}</td>
         <td class="muted">${daysAgo(inv.lastActivity)}</td>
       </tr>
     `).join("")
-    : `<tr><td colspan="6">${emptyState("No investors match these filters")}</td></tr>`;
+    : `<tr><td colspan="5">${emptyState("No investors match these filters")}</td></tr>`;
 
   tbody.querySelectorAll("[data-investor-id]").forEach((tr) => {
     tr.addEventListener("click", () => openInvestorDetail(tr.dataset.investorId));
@@ -415,7 +417,7 @@ function kanbanCard(inv) {
       <div class="kanban-card-title">${inv.name}</div>
       <div class="kanban-card-sub">${inv.firm} · ${checkRange(inv)}</div>
       <div class="kanban-card-foot">
-        <span class="badge ${badgeForDirection(inv.direction)}">${inv.direction}</span>
+        ${inv.isLead ? '<span class="badge badge-purple">Lead</span>' : "<span></span>"}
         <span class="muted">${daysAgo(inv.lastActivity)}</span>
       </div>
     </div>
@@ -456,6 +458,7 @@ function wireKanbanDragDrop() {
           investorId: inv.id,
           text: `${inv.name} moved from ${STAGE_LABELS[oldStage]} to ${STAGE_LABELS[newStage]}.`,
         });
+        apiPatch("/pipeline/" + inv.entryId, { stage: inv.stage, outcome: inv.outcome }).catch(() => (typeof showToast === "function") && showToast("Save failed"));
         showToast(`Moved ${inv.name} to "${STAGE_LABELS[newStage]}"`);
         renderPipeline();
       }
@@ -565,8 +568,8 @@ function openInvestorDetail(id) {
 
     <div class="detail-section">
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <span class="badge ${badgeForDirection(inv.direction)}">${inv.direction}</span>
         ${statusBadges(inv)}
+        ${inv.isLead ? '<span class="badge badge-purple">Lead</span>' : ""}
       </div>
     </div>
 
@@ -634,6 +637,7 @@ function openInvestorDetail(id) {
         investorId: inv.id,
         text: `${inv.name} updated to ${STAGE_LABELS[newStage]} · ${OUTCOME_LABELS[newOutcome]}.`,
       });
+      apiPatch("/pipeline/" + inv.entryId, { stage: inv.stage, outcome: inv.outcome }).catch(() => (typeof showToast === "function") && showToast("Save failed"));
       showToast(`${inv.name} updated`);
       closeSlideover();
       renderCurrentView();

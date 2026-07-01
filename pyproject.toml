@@ -11,7 +11,10 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "ruff>=0.6",
+    "httpx>=0.27",          # FastAPI TestClient (web API tests)
 ]
+# The HTTP API + served dashboard UI (dreamwork/web). Not needed for core/MCP.
+web = ["fastapi>=0.115", "uvicorn>=0.30"]
 # Only needed to import a live Notion database (onboarding). Everything else runs without it.
 notion = ["notion-client>=2.2"]
 # Only needed for the real Postgres store (modules/qualified_list/store.py). The app runs on the

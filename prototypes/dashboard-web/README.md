@@ -3,10 +3,17 @@
 A static HTML/CSS/JS mockup of a possible **web view** for the `dashboard` module (see the
 "(later) an email digest or web view" note in `dreamwork/modules/dashboard/__init__.py`).
 
-**This is a visual reference only.** It runs entirely on hardcoded mock data in `js/data.js`
-and does not talk to `Repository`, `core.domain`, or the MCP server.
+**This is now wired to the live backend.** `js/data.js` fetches from the `dreamwork.web` HTTP
+API (`/api/...`), which reads the real `Repository`; the kanban and detail edits persist via
+`PATCH /api/pipeline/{id}`. Run it with `python -m uvicorn dreamwork.web.api:app` and open
+http://127.0.0.1:8000 (see the repo README's "Run the web dashboard"). It still runs as a
+static file too, but then reads nothing.
 
-Its data model, however, **mirrors the real domain** (`dreamwork/core/domain.py`): `js/data.js`
+Fields the core model doesn't have yet (`direction`/inbound-outbound, the peer "Shared Network",
+and the activity feed) are intentionally empty when wired to the API — those views show empty
+states until the domain gains those concepts.
+
+Its data model **mirrors the real domain** (`dreamwork/core/domain.py`): `js/data.js`
 defines normalized `firms`, `partners`, and `pipeline` (`PipelineEntry`) entities and exposes
 `investors` as an explicit `PipelineEntry ⋈ Firm ⋈ Partner` join — exactly what the real
 dashboard reads. Investor state uses the two canonical axes:

@@ -75,6 +75,22 @@ python -m dreamwork.mcp_server
 `tests/test_repository_contract.py` runs the same assertions against both stores; point
 `DREAMWORK_TEST_DB_URL` at a throwaway database to include Postgres in the run.
 
+### Run the web dashboard
+
+The browser can't speak MCP (it's stdio), so `dreamwork/web` is a thin FastAPI layer that
+exposes the same module logic (dashboard/onboarding/qualified_list over a `Repository`) as JSON
+and serves the dashboard UI. It uses the same `get_repository()` — in-memory by default, Postgres
+if `DREAMWORK_DB_URL` is set — and seeds demo data when the store is empty.
+
+```bash
+.venv/bin/pip install -e ".[web]"
+.venv/bin/python -m uvicorn dreamwork.web.api:app --port 8000
+# open http://127.0.0.1:8000
+```
+
+The Overview / Investors / Pipeline views are fully live (real firms, canonical stages/outcomes,
+leads, tickets); the kanban and detail edits persist via `PATCH /api/pipeline/{id}`.
+
 ## Onboarding: get your investor list in (owner: Helge)
 
 The onboarding module imports a founder's investor list / cap table into `core`, deduping and

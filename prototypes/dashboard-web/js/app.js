@@ -241,8 +241,7 @@ function initGlobalDismiss() {
   });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  initHeader();
+document.addEventListener("DOMContentLoaded", async () => {
   initNav();
   initSearch();
   initGlobalDismiss();
@@ -250,5 +249,14 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btn-add-investor").addEventListener("click", openAddInvestorModal);
   document.getElementById("btn-log-activity").addEventListener("click", openLogActivityModal);
 
+  // Load live data before the first render — initHeader/setView read DW_DATA.
+  try {
+    await loadData();
+  } catch (err) {
+    console.error(err);
+    if (typeof showToast === "function") showToast("Could not load data");
+  }
+
+  initHeader();
   setView("overview");
 });

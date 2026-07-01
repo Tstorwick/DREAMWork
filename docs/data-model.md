@@ -19,16 +19,31 @@ required "tag" fields, each linked to a Markdown dossier** that holds everything
 An investor firm (fund). The firm-level record — this is the granularity the external
 book-face shares.
 
+> **PROPOSED ADDITION (Chris, for Thomas's review):** `website`, `team_members`,
+> `ticket_size_usd_range`, `portfolio_companies`, and `extantia_portfolio_overlap` below are new.
+> They came out of scoping the investor database: qualification only needs a handful of
+> filterable tags, but the "show a founder which other investors already know their fellow
+> Extantia portco CEOs" feature needs `extantia_portfolio_overlap` specifically — it's the field
+> that makes cross-portfolio visibility possible. `portfolio_companies` stays a plain string list
+> (most entries won't be Extantia companies and don't need their own record); only the overlap
+> subset is worth naming explicitly. Open to folding this into `dossier_path` freeform content
+> instead if you'd rather keep `Firm` lean — flagging for a call, not assuming the merge.
+
 | Field              | Type            | Notes                                              |
 |--------------------|-----------------|----------------------------------------------------|
 | `id`               | id              |                                                    |
 | `name`             | str  (required) | The one always-required tag.                       |
+| `website`          | str?            | *Proposed.*                                        |
 | `fund_size_usd`    | int?            | e.g. 200_000_000. Firm-level, shareable, corroborated. |
 | `aum_usd`          | int?            | Softer than cap-table facts; can be inferred.      |
 | `leads`            | bool?           | Does this firm lead rounds?                        |
 | `geographies`      | list[str]       | Qualification filter.                              |
 | `sectors`          | list[str]       | Qualification filter.                              |
 | `follows_on`       | bool?           | Tends to follow on in later rounds.                |
+| `team_members`     | list[str]       | *Proposed.* Freeform "Name — Title" entries.       |
+| `ticket_size_usd_range` | (int?, int?)? | *Proposed.* Typical check size, (min, max).     |
+| `portfolio_companies` | list[str]    | *Proposed.* Freeform, firm-reported.                |
+| `extantia_portfolio_overlap` | list[str] | *Proposed.* Subset of `portfolio_companies` that are also Extantia portfolio companies — powers cross-portfolio investor visibility. |
 | `dossier_path`     | str?            | → `data/dossiers/firm/<id>.md`                     |
 
 ### Partner

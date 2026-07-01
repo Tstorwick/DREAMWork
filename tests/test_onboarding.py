@@ -118,6 +118,16 @@ def test_inferred_import_does_not_clobber_existing_value():
     assert repo.list_firms()[0].fund_size_usd == 8_000_000_000
 
 
+def test_inferred_import_does_not_clobber_a_legit_false():
+    """Regression: leads=False is a set value, not a fillable blank (0 == False in Python)."""
+    repo = _repo_with_round()
+    onboarding.import_captable(repo, "r1", [{"Firm": "Sequoia", "Leads": "no"}])
+    assert repo.list_firms()[0].leads is False
+    # An inferred import claiming they lead must NOT flip the existing False.
+    onboarding.import_captable(repo, "r1", [{"Firm": "Sequoia", "Leads": "yes"}])
+    assert repo.list_firms()[0].leads is False
+
+
 def test_paste_a_markdown_table():
     repo = _repo_with_round()
     text = "| Firm | Partner | Stage |\n|---|---|---|\n| Accel | Rich | met |\n"

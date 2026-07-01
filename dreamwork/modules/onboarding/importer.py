@@ -186,6 +186,16 @@ def _upsert_entry(
     return existing
 
 
+def _is_unset(value: object) -> bool:
+    """Whether a field is truly unset — the only case where an inferred import may fill it.
+
+    Only `None` and empty containers/strings count as blank. A real `False` or `0` is a *set*
+    value: without this, `leads=False` would look blank (since `0 == False` in Python) and a
+    later inferred import could silently flip it to `True`.
+    """
+    return value is None or value == "" or value == []
+
+
 def _apply_fields(entity: object, record: InvestorRecord, names: tuple[str, ...], *, is_new: bool) -> bool:
     """Copy record fields onto a core entity. Fill blanks always; overwrite only if human-confirmed.
 
@@ -200,7 +210,7 @@ def _apply_fields(entity: object, record: InvestorRecord, names: tuple[str, ...]
         if not hasattr(entity, attr):
             continue
         current = getattr(entity, attr)
-        blank = current in (None, [], "", False) if not is_new else True
+        blank = _is_unset(current) if not is_new else True
         if is_new:
             setattr(entity, attr, prov.value)
         elif blank or prov.is_human_confirmed:

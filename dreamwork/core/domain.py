@@ -100,7 +100,7 @@ class PipelineEntry:
     stage: Stage = Stage.SOURCED
     outcome: Outcome = Outcome.ACTIVE
     is_lead: bool = False
-    ticket_estimate_usd: int | None = None
+    ticket_estimate_usd: int | None = None  # estimate on an open round; actual amount on a closed one
     first_contact_date: date | None = None
     last_contact_date: date | None = None
     next_step: str | None = None

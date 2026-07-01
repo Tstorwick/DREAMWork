@@ -90,7 +90,7 @@ See `docs/pipeline.md` for the `stage`/`outcome` values.
 | `stage`               | Stage           | Progression: sourced → … → closed. See pipeline.md.|
 | `outcome`             | Outcome         | Orthogonal: active / snoozed / passed / next_round.|
 | `is_lead`             | bool            | Are they a potential lead for this round?          |
-| `ticket_estimate_usd` | int?            | Estimated check size.                              |
+| `ticket_estimate_usd` | int?            | Your best check-size figure for this entry: an **estimate** on an open round, the **actual** amount on a closed/historical round (e.g. reconstructed from a cap table). Round status disambiguates; the dashboard only sums it for active entries. |
 | `first_contact_date`  | date?           |                                                    |
 | `last_contact_date`   | date?           | Drives "how long since contact" / reminders.       |
 | `next_step`           | str?            | What you owe them next.                             |

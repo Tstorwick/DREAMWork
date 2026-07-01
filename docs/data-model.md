@@ -125,8 +125,9 @@ shared fact carries:
 - **who holds the connection** — who actually knows this firm,
 - **confidence** — grows as multiple founders corroborate the same fact.
 
-> **DEFERRED:** what exactly triggers a fact being shared (opt-in per fact vs auto-sanitize)
-> is owned by the onboarding partner and built later. The `modules/external` seam models the
-> *shape* (value + owner + connection + confidence) so we can wire the trigger in without
-> reshaping data. Nothing internal/private crosses this boundary except through an explicit
-> sanitize step.
+> **DECIDED (2026-07-01):** sharing is **opt-in once, at onboarding** — a founder opts in during
+> onboarding, and from then their sanitized *firm-level* facts flow to the book-face (not a
+> per-fact prompt, not silent auto-sanitize). The `modules/external` seam already models the
+> *shape* (value + owner + connection + confidence); onboarding wires the opt-in to it. Nothing
+> internal/private crosses this boundary except through the explicit `sanitize` step, and
+> `founder_rating` is never eligible (see `SHAREABLE_FIRM_FIELDS`).

@@ -89,8 +89,8 @@ The sanitized, portfolio-only shared graph. **Mocked locally now, Google Cloud l
 - `sanitize(firm) -> list[SharedFact]` — strips everything but firm-level facts, attaches
   owner + who-holds-the-connection.
 
-> The **trigger** for publishing (opt-in per fact vs auto) is deferred to the onboarding
-> owner. Build the sanitize/publish shape now; wire the trigger when we get there.
+> The **trigger** for publishing is decided: **opt-in once, at onboarding** (2026-07-01).
+> Onboarding wires a founder's opt-in to `sanitize` + `publish`; build the shape here.
 
 Consumes: `core` domain (read-only). Exposes: `BookFaceClient`, `sanitize`. The internal→external
 boundary lives entirely here — no other module writes to the shared store.

@@ -9,9 +9,9 @@ This is the one place internal data crosses into the shared store, and it does s
 `sanitize()`. Mocked locally now (`LocalMockBookFace`); a Google Cloud client drops in later
 behind the same `BookFaceClient` contract — nothing built against it changes.
 
-    DEFERRED: what triggers a fact being shared (opt-in per fact vs auto-sanitize) is owned by
-    the onboarding partner and wired in later. We model the *shape* now so that decision doesn't
-    reshape data.
+    DECIDED (2026-07-01): sharing is opt-in ONCE, at onboarding — once a founder opts in, their
+    sanitized firm-level facts flow to the book-face. Onboarding wires that opt-in to this seam;
+    the shape here is unchanged.
 
 See core/external.py isn't a thing — everything for this seam lives here and in client.py.
 """
